@@ -1,8 +1,10 @@
 // src/api/api.js
 import axios from 'axios';
 
-const API_URL = 'http://localhost:5000/api/auth'; // your backend
+const API_BASE = process.env.REACT_APP_API_URL || '';
+const AUTH_URL = `${API_BASE}/api/auth`;
+const ADMIN_URL = `${API_BASE}/api/admin`;
 
-export const signup = (data) => axios.post(`${API_URL}/signup`, data);
-export const login = (data) => axios.post(`${API_URL}/login`, data);
-export const adminLogin = (data) => axios.post('http://localhost:5000/api/admin/login', data);
+export const signup = (data) => axios.post(`${AUTH_URL}/register`, data);
+export const login = (data) => axios.post(`${AUTH_URL}/login`, data);
+export const adminLogin = (data) => axios.post(`${ADMIN_URL}/login`, data);

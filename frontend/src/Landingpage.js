@@ -17,7 +17,7 @@ import portfolio7Img from './babies/b_4.jpeg';
 import portfolio8Img from './babies/b_2.jpeg';
 import axios from "axios";
 
-const API_URL = "http://localhost:5000/api/auth";
+const API_URL = (process.env.REACT_APP_API_URL || '') + '/api/auth';
 const services = [
   { name: 'Weddings', desc: 'Best photography for your special day', img: service1Image },
   { name: 'Naming Ceremonies', desc: 'Capturing your baby\'s naming ceremony', img: service2Image },
