@@ -4,7 +4,8 @@ const app = express();
 const port = process.env.PORT || 5000;
 const Razorpay = require('razorpay');
 require('dotenv').config();
-const mysql = require('mysql');
+// const mysql = require('mysql');
+const db = require('./db');
 const paymentRoutes = require("./routes/payment");
 // ROUTES
 const adminRoutes = require("./routes/admin");
@@ -15,9 +16,8 @@ app.use(express.json());
 app.use("/api/admin", adminRoutes);
 app.use('/api/auth', authRoutes);
 app.use("/api/payment", paymentRoutes);
-
-// MySQL connection (for bookings)
-const db = mysql.createConnection({
+ 
+/* const db = mysql.createConnection({
   host: process.env.DB_HOST || 'localhost',
   user: process.env.DB_USER || 'root',
   password: process.env.DB_PASSWORD || 'Shruti28',
@@ -44,7 +44,7 @@ db.connect((err) => {
     if (err) throw err;
     console.log("Bookings table ready");
   });
-});
+}); */
 
 // Razorpay instance
 const razorpay = new Razorpay({
