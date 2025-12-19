@@ -1,7 +1,8 @@
 // src/api/api.js
 import axios from 'axios';
 
-const API_BASE = process.env.REACT_APP_API_URL || '';
+// Default to localhost in development for convenience
+const API_BASE = process.env.REACT_APP_API_URL || (process.env.NODE_ENV === 'development' ? 'http://localhost:5000' : '');
 const AUTH_URL = `${API_BASE}/api/auth`;
 const ADMIN_URL = `${API_BASE}/api/admin`;
 

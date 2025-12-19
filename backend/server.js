@@ -17,34 +17,55 @@ app.use("/api/admin", adminRoutes);
 app.use('/api/auth', authRoutes);
 app.use("/api/payment", paymentRoutes);
  
-/* const db = mysql.createConnection({
-  host: process.env.DB_HOST || 'localhost',
-  user: process.env.DB_USER || 'root',
-  password: process.env.DB_PASSWORD || 'Shruti28',
-  database: process.env.DB_NAME || 'photo_studio',
-});
-
-db.connect((err) => {
-  if (err) throw err;
-  console.log("MySQL connected");
-
-  // create bookings table if not exists
-  const createTableQuery = `CREATE TABLE IF NOT EXISTS bookings (
+// Ensure DB tables exist and align with app expectations
+const ensureSchema = () => {
+  const createUsers = `CREATE TABLE IF NOT EXISTS users (
     id INT AUTO_INCREMENT PRIMARY KEY,
-    name VARCHAR(255),
-    email VARCHAR(255),
+    name VARCHAR(100) NOT NULL,
+    email VARCHAR(120) NOT NULL UNIQUE,
+    password VARCHAR(255) NOT NULL
+  )`;
+
+  const createAdmin = `CREATE TABLE IF NOT EXISTS admin (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    username VARCHAR(100) NOT NULL UNIQUE,
+    password VARCHAR(255) NOT NULL
+  )`;
+
+  const createBookings = `CREATE TABLE IF NOT EXISTS bookings (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT,
+    event_type VARCHAR(100),
+    full_name VARCHAR(100),
+    email VARCHAR(120),
     phone VARCHAR(20),
-    eventType VARCHAR(255),
+    location VARCHAR(255),
     amount DECIMAL(10,2),
     status VARCHAR(20) DEFAULT 'pending',
-    paymentId VARCHAR(255),
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    payment_id VARCHAR(255),
+    payment_status VARCHAR(20) DEFAULT 'pending',
+    booking_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    booking_time VARCHAR(20),
+    FOREIGN KEY (user_id) REFERENCES users(id)
   )`;
-  db.query(createTableQuery, (err) => {
-    if (err) throw err;
-    console.log("Bookings table ready");
+
+  db.query(createUsers, (err) => {
+    if (err) return console.error('DB init (users) failed:', err.message);
+    console.log('DB: users table ensured');
   });
-}); */
+
+  db.query(createAdmin, (err) => {
+    if (err) return console.error('DB init (admin) failed:', err.message);
+    console.log('DB: admin table ensured');
+  });
+
+  db.query(createBookings, (err) => {
+    if (err) return console.error('DB init (bookings) failed:', err.message);
+    console.log('DB: bookings table ensured');
+  });
+};
+
+ensureSchema();
 
 // Razorpay instance
 const razorpay = new Razorpay({
@@ -54,7 +75,7 @@ const razorpay = new Razorpay({
 
 // CREATE ORDER
 app.post("/api/create-order", async (req, res) => {
-  const { name, email, phone, eventType, amount } = req.body;
+  const { name, email, phone, eventType, amount, location, booking_time } = req.body;
 
   if (!process.env.RAZORPAY_KEY_ID || !process.env.RAZORPAY_KEY_SECRET) {
     console.error('Razorpay keys missing. RAZORPAY_KEY_ID present:', !!process.env.RAZORPAY_KEY_ID);
@@ -75,11 +96,11 @@ app.post("/api/create-order", async (req, res) => {
   try {
     const order = await razorpay.orders.create(options);
 
-    // Save booking in DB
-    const sql = `INSERT INTO bookings (name, email, phone, eventType, amount, paymentId) VALUES (?, ?, ?, ?, ?, ?)`;
-    db.query(sql, [name, email, phone, eventType, amount, order.id], (err, result) => {
+    // Save booking in DB (use snake_case column names that match schema)
+    const sql = `INSERT INTO bookings (full_name, email, phone, event_type, amount, payment_id, location, booking_time) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`;
+    db.query(sql, [name, email, phone, eventType, amount, order.id, location || null, booking_time || null], (err, result) => {
       if (err) {
-        console.error('DB insert error (create-order):', err);
+        console.error('DB insert error (create-order):', err.message);
         return res.status(500).json({ success: false, error: 'Database error saving booking' });
       }
       // include key id so frontend doesn't rely on client env vars
@@ -96,7 +117,8 @@ app.post("/api/create-order", async (req, res) => {
 // PAYMENT SUCCESS
 app.post("/api/payment-success", (req, res) => {
   const { bookingId, paymentId } = req.body;
-  const sql = `UPDATE bookings SET status='completed', paymentId=? WHERE id=?`;
+  // update both status and payment_id/payment_status fields
+  const sql = `UPDATE bookings SET status='completed', payment_id=?, payment_status='paid' WHERE id=?`;
   db.query(sql, [paymentId, bookingId], (err) => {
     if (err) return res.status(500).json({ success: false, error: err });
     res.json({ success: true, message: "Payment successful and booking confirmed!" });
@@ -105,10 +127,23 @@ app.post("/api/payment-success", (req, res) => {
 
 // GET BOOKINGS (for admin dashboard)
 app.get("/api/bookings", (req, res) => {
-  const sql = `SELECT * FROM bookings ORDER BY created_at DESC`;
+  const sql = `SELECT * FROM bookings ORDER BY booking_date DESC`;
   db.query(sql, (err, result) => {
     if (err) return res.status(500).json({ success: false, error: err });
-    res.json({ bookings: result });
+    // ensure response includes the fields frontend expects (payment_status, full_name, event_type)
+    const bookings = (result || []).map((r) => ({
+      id: r.id,
+      full_name: r.full_name || r.name || null,
+      event_type: r.event_type || r.eventType || null,
+      location: r.location || null,
+      booking_date: r.booking_date || r.created_at || null,
+      booking_time: r.booking_time || null,
+      status: r.status || 'pending',
+      payment_status: r.payment_status || (r.status === 'completed' ? 'paid' : 'pending'),
+      payment_id: r.payment_id || r.paymentId || null,
+      amount: r.amount || 0
+    }));
+    res.json({ bookings });
   });
 });
 
@@ -130,6 +165,27 @@ app.get('/api/razorpay-keys', (req, res) => {
 // TEST ROUTE
 app.get('/', (req, res) => {
   res.send({ status: 'Server is up' });
+});
+
+// HEALTH CHECK (verifies DB connectivity)
+app.get('/api/health', (req, res) => {
+  db.query('SELECT 1 + 1 AS result', (err) => {
+    if (err) {
+      console.error('DB health check failed:', err.message);
+      return res.status(500).json({ success: false, db: false, error: err.message });
+    }
+    res.json({ success: true, db: true });
+  });
+});
+
+// Graceful error handlers for unhandled rejections & exceptions
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('Unhandled Rejection at:', promise, 'reason:', reason);
+});
+process.on('uncaughtException', (err) => {
+  console.error('Uncaught Exception:', err);
+  // exit to avoid undefined state (pm2 or hosting platform should restart)
+  process.exit(1);
 });
 
 // START SERVER

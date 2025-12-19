@@ -55,7 +55,8 @@ const openTestPayment = async () => {
   const phone = document.querySelector('input[name="phone"]').value;
 
   // create order + booking on backend so we have a bookingId to confirm later
-  const createRes = await fetch((process.env.REACT_APP_API_URL || '') + "/api/create-order", {
+  const API_BASE = process.env.REACT_APP_API_URL || (process.env.NODE_ENV === 'development' ? 'http://localhost:5000' : '');
+  const createRes = await fetch(`${API_BASE}/api/create-order`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -94,7 +95,8 @@ const openTestPayment = async () => {
       alert("✅ Payment Successful! Payment ID: " + response.razorpay_payment_id);
 
       // confirm payment for booking on backend
-      await fetch((process.env.REACT_APP_API_URL || '') + "/api/payment-success", {
+      const API_BASE2 = process.env.REACT_APP_API_URL || (process.env.NODE_ENV === 'development' ? 'http://localhost:5000' : '');
+      await fetch(`${API_BASE2}/api/payment-success`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ bookingId, paymentId: response.razorpay_payment_id }),

@@ -7,8 +7,9 @@ export default function AdminDashboard() {
   const [bookings, setBookings] = useState([]);
 
   useEffect(() => {
+    const API_BASE = process.env.REACT_APP_API_URL || (process.env.NODE_ENV === 'development' ? 'http://localhost:5000' : '');
     axios
-      .get((process.env.REACT_APP_API_URL || '') + '/api/bookings')
+      .get(`${API_BASE}/api/bookings`)
       .then((res) => setBookings(res.data.bookings || []))
       .catch((err) => console.log(err));
   }, []);

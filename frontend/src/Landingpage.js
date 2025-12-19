@@ -17,7 +17,8 @@ import portfolio7Img from './babies/b_4.jpeg';
 import portfolio8Img from './babies/b_2.jpeg';
 import axios from "axios";
 
-const API_URL = (process.env.REACT_APP_API_URL || '') + '/api/auth';
+const API_BASE = process.env.REACT_APP_API_URL || (process.env.NODE_ENV === 'development' ? 'http://localhost:5000' : '');
+const API_URL = `${API_BASE}/api/auth`;
 const services = [
   { name: 'Weddings', desc: 'Best photography for your special day', img: service1Image },
   { name: 'Naming Ceremonies', desc: 'Capturing your baby\'s naming ceremony', img: service2Image },
@@ -199,8 +200,9 @@ const LoginModal = ({ isOpen, closeModal }) => {
     closeModal();
 
   } catch (error) {
-    console.error("Auth Error:", error);
-    alert("Something went wrong. Please try again.");
+    const serverMsg = error?.response?.data?.message || error?.message || 'Something went wrong. Please try again.';
+    console.error('Auth Error:', error?.response?.data || error);
+    alert(serverMsg);
   }
 };
 
