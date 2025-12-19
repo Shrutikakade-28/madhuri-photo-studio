@@ -70,3 +70,29 @@ exports.getDashboardData = (req, res) => {
     revenue: 15000
   });
 };
+
+// Fetch messages (for admin)
+exports.getMessages = (req, res) => {
+  const sql = 'SELECT * FROM messages ORDER BY created_at DESC';
+  db.query(sql, (err, result) => {
+    if (err) return res.status(500).json({ success: false, message: 'DB Error', error: err.message });
+    const messages = (result || []).map(m => ({
+      id: m.id,
+      name: m.name,
+      email: m.email,
+      message: m.message,
+      is_read: !!m.is_read,
+      created_at: m.created_at
+    }));
+    return res.json({ success: true, messages });
+  });
+};
+
+// Mark message as read
+exports.markMessageRead = (req, res) => {
+  const id = req.params.id;
+  db.query('UPDATE messages SET is_read = 1 WHERE id = ?', [id], (err, result) => {
+    if (err) return res.status(500).json({ success: false, message: 'DB Error', error: err.message });
+    return res.json({ success: true, message: 'Marked as read' });
+  });
+};

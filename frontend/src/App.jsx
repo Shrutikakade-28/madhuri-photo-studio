@@ -4,7 +4,7 @@ import Landingpage from './Landingpage';
 import Home from './Home';
 import AdminDashboard from './AdminDashboard';
 import AdminLogin from './LoginAdmin';
-
+import Booked from "./Booked";
 // Auth helper functions
 const isUserAuthenticated = () => !!localStorage.getItem('user');
 const isAdminAuthenticated = () => !!localStorage.getItem('adminToken');
@@ -32,6 +32,7 @@ function App() {
           path="/admin"
           element={isAdminAuthenticated() ? <AdminDashboard /> : <Navigate to="/admin/login" />}
         />
+        <Route path="/booked-events" element={<Booked />} />
 
         {/* Catch-all redirect */}
         <Route path="*" element={<Navigate to="/" />} />

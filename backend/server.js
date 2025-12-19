@@ -49,6 +49,14 @@ const ensureSchema = () => {
     FOREIGN KEY (user_id) REFERENCES users(id)
   )`;
 
+  const createMessages = `CREATE TABLE IF NOT EXISTS messages (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(120),
+    email VARCHAR(120),
+    message TEXT,
+    is_read TINYINT(1) DEFAULT 0,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+  )`;
   db.query(createUsers, (err) => {
     if (err) return console.error('DB init (users) failed:', err.message);
     console.log('DB: users table ensured');
@@ -62,6 +70,11 @@ const ensureSchema = () => {
   db.query(createBookings, (err) => {
     if (err) return console.error('DB init (bookings) failed:', err.message);
     console.log('DB: bookings table ensured');
+  });
+
+  db.query(createMessages, (err) => {
+    if (err) return console.error('DB init (messages) failed:', err.message);
+    console.log('DB: messages table ensured');
   });
 };
 
@@ -97,15 +110,59 @@ app.post("/api/create-order", async (req, res) => {
     const order = await razorpay.orders.create(options);
 
     // Save booking in DB (use snake_case column names that match schema)
-    const sql = `INSERT INTO bookings (full_name, email, phone, event_type, amount, payment_id, location, booking_time) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`;
-    db.query(sql, [name, email, phone, eventType, amount, order.id, location || null, booking_time || null], (err, result) => {
-      if (err) {
-        console.error('DB insert error (create-order):', err.message);
-        return res.status(500).json({ success: false, error: 'Database error saving booking' });
-      }
-      // include key id so frontend doesn't rely on client env vars
-      res.json({ success: true, order, bookingId: result.insertId, key: process.env.RAZORPAY_KEY_ID });
-    });
+    // allow optional user_id if provided
+    let userIdValue = req.body.userId || null;
+    // If userId not provided but email present, try to lookup user id
+    const insertBooking = (userIdToUse) => {
+      const sql = `INSERT INTO bookings (user_id, full_name, email, phone, event_type, amount, payment_id, location, booking_time) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`;
+      db.query(sql, [userIdToUse, name, email, phone, eventType, amount, order.id, location || null, booking_time || null], (err, result) => {
+        if (err) {
+          console.error('DB insert error (create-order):', err.message);
+          return res.status(500).json({ success: false, error: 'Database error saving booking' });
+        }
+        const insertedId = result.insertId;
+        // fetch the created booking to return consistent shape
+        db.query('SELECT * FROM bookings WHERE id = ?', [insertedId], (err2, rows2) => {
+          if (err2) {
+            console.error('DB fetch after insert failed:', err2.message);
+            return res.json({ success: true, order, bookingId: insertedId, key: process.env.RAZORPAY_KEY_ID });
+          }
+          const r = rows2[0];
+          const booking = {
+            id: r.id,
+            full_name: r.full_name,
+            event_type: r.event_type,
+            location: r.location,
+            booking_date: r.booking_date,
+            booking_time: r.booking_time,
+            status: r.status,
+            payment_status: r.payment_status,
+            amount: r.amount,
+            payment_id: r.payment_id,
+            user_id: r.user_id
+          };
+          console.log('New booking created:', booking);
+          res.json({ success: true, order, bookingId: insertedId, booking, key: process.env.RAZORPAY_KEY_ID });
+        });
+      });
+    };
+
+    if (!userIdValue && email) {
+      // try to find user by email
+      db.query('SELECT id FROM users WHERE email = ?', [email], (err, rows) => {
+        if (err) {
+          console.error('User lookup failed:', err.message);
+          return insertBooking(null);
+        }
+        if (rows && rows.length > 0) {
+          insertBooking(rows[0].id);
+        } else {
+          insertBooking(null);
+        }
+      });
+    } else {
+      insertBooking(userIdValue || null);
+    }
   } catch (err) {
     // Log detailed Razorpay error if present
     console.error('Razorpay order creation failed:', err && err.error ? err.error : err);
@@ -125,10 +182,23 @@ app.post("/api/payment-success", (req, res) => {
   });
 });
 
-// GET BOOKINGS (for admin dashboard)
+// GET BOOKINGS (for admin dashboard or for a user)
 app.get("/api/bookings", (req, res) => {
-  const sql = `SELECT * FROM bookings ORDER BY booking_date DESC`;
-  db.query(sql, (err, result) => {
+  const { userId, email } = req.query;
+  let sql = `SELECT * FROM bookings`;
+  const params = [];
+
+  if (userId) {
+    sql += ` WHERE user_id = ?`;
+    params.push(userId);
+  } else if (email) {
+    sql += ` WHERE email = ?`;
+    params.push(email);
+  }
+
+  sql += ` ORDER BY booking_date DESC`;
+
+  db.query(sql, params, (err, result) => {
     if (err) return res.status(500).json({ success: false, error: err });
     // ensure response includes the fields frontend expects (payment_status, full_name, event_type)
     const bookings = (result || []).map((r) => ({

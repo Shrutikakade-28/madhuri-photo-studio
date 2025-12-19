@@ -22,7 +22,27 @@ const bookings = [
 ];
 const uniqueBookings = Array.from(new Map(bookings.map((b) => [b.title, b])).values());
 
+const EVENT_DETAILS = {
+  'Wedding': { duration: 'Full day (8–10 hrs)', price: '₹7,000 – ₹25,000' },
+  'Whole Wedding Package': { duration: 'Full day / Multiple sessions', price: '₹12,000 – ₹40,000' },
+  'Pre-Wedding': { duration: '2–4 hrs', price: '₹4,000 – ₹10,000' },
+  'Engagement': { duration: '2–3 hrs', price: '₹3,000 – ₹8,000' },
+  'Baby': { duration: '1–2 hrs', price: '₹2,000 – ₹7,000' },
+  'Baby Naming Ceremony': { duration: '2–3 hrs', price: '₹3,000 – ₹8,000' },
+  'Birthday': { duration: '2–3 hrs', price: '₹3,000 – ₹10,000' },
+  'Your Special Event': { duration: 'Varies', price: 'Contact for quote' },
+  'Special Event': { duration: 'Varies', price: 'Contact for quote' },
+  'Other': { duration: 'Varies', price: 'Contact for quote' }
+};
+
+const getEventDetails = (title) => {
+  return EVENT_DETAILS[title] || { duration: 'Varies', price: 'Contact for quote' };
+};
+
 export default function Home() {
+  const [showBookDropdown, setShowBookDropdown] = useState(false);
+  const [showServiceDropdown, setShowServiceDropdown] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   let user = null;
   try {
     user = JSON.parse(localStorage.getItem("user"));
@@ -35,7 +55,7 @@ export default function Home() {
   };
   const [selectedBooking, setSelectedBooking] = useState(null);
   const [showTerms, setShowTerms] = useState(false);
-  const openModal = (booking) => setSelectedBooking(booking);
+  const openModal = (booking) => setSelectedBooking({ ...booking, ...getEventDetails(booking.title) });
   const closeModal = () => setSelectedBooking(null);
 
   const handleBookingSubmit = (e) => {
@@ -48,70 +68,83 @@ export default function Home() {
     alert('Thanks — your message was sent. We will contact you soon.');
     e.target.reset();
   };
-  
-const openTestPayment = async () => {
-  const name = document.querySelector('input[name="name"]').value;
-  const email = document.querySelector('input[name="email"]').value;
-  const phone = document.querySelector('input[name="phone"]').value;
 
-  // create order + booking on backend so we have a bookingId to confirm later
-  const API_BASE = process.env.REACT_APP_API_URL || (process.env.NODE_ENV === 'development' ? 'http://localhost:5000' : '');
-  const createRes = await fetch(`${API_BASE}/api/create-order`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      name,
-      email,
-      phone,
-      eventType: selectedBooking.title,
-      amount: 7000 // send amount in INR (server multiplies by 100)
-    }),
-  });
+  const openTestPayment = async () => {
+    if (!selectedBooking) {
+      alert('Please select an event to book.');
+      return;
+    }
 
-  const createData = await createRes.json();
-  if (!createData || !createData.success) {
-    console.error('Create order failed', createData);
-    alert('❌ Could not create order. Please try again later.');
-    return;
-  }
+    try {
+      const name = document.querySelector('input[name="name"]').value;
+      const email = document.querySelector('input[name="email"]').value;
+      const phone = document.querySelector('input[name="phone"]').value;
+      const location = document.querySelector('input[name="location"]').value || null;
 
-  const order = createData.order;
-  const bookingId = createData.bookingId;
-  const key = createData.key || process.env.REACT_APP_RAZORPAY_KEY_ID;
-
-  if (!window.Razorpay) {
-    alert('Razorpay SDK not loaded. Please check your network or include the SDK script.');
-    return;
-  }
-
-  const options = {
-    key: key,
-    amount: order.amount,
-    currency: order.currency || 'INR',
-    name: "Madhuri Photo Studio",
-    description: `Booking for ${selectedBooking.title}`,
-    order_id: order.id,
-    handler: async function (response) {
-      alert("✅ Payment Successful! Payment ID: " + response.razorpay_payment_id);
-
-      // confirm payment for booking on backend
-      const API_BASE2 = process.env.REACT_APP_API_URL || (process.env.NODE_ENV === 'development' ? 'http://localhost:5000' : '');
-      await fetch(`${API_BASE2}/api/payment-success`, {
+      const API_BASE = process.env.REACT_APP_API_URL || (process.env.NODE_ENV === 'development' ? 'http://localhost:5000' : '');
+      const user = (() => { try { return JSON.parse(localStorage.getItem('user')); } catch { return null; } })();
+      const createRes = await fetch(`${API_BASE}/api/create-order`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ bookingId, paymentId: response.razorpay_payment_id }),
+        body: JSON.stringify({
+          userId: user?.id || null,
+          name,
+          email,
+          phone,
+          eventType: selectedBooking.title,
+          amount: 7000, // send amount in INR (server multiplies by 100)
+          location
+        }),
       });
 
-      setShowTerms(false);
-      setSelectedBooking(null);
-    },
-    prefill: { name, email, contact: phone },
-    theme: { color: "#ff9c11" },
-  };
+      const createData = await createRes.json();
+      if (!createData || !createData.success) {
+        console.error('Create order failed', createData);
+        alert('❌ Could not create order. Please try again later.');
+        return;
+      }
 
-  const rzp = new window.Razorpay(options);
-  rzp.open();
-};
+      const order = createData.order;
+      const bookingId = createData.bookingId;
+      const key = createData.key || process.env.REACT_APP_RAZORPAY_KEY_ID;
+
+      if (!window.Razorpay) {
+        alert('Razorpay SDK not loaded. Please check your network or include the SDK script.');
+        return;
+      }
+
+      const options = {
+        key: key,
+        amount: order.amount,
+        currency: order.currency || 'INR',
+        name: "Madhuri Photo Studio",
+        description: `Booking for ${selectedBooking.title}`,
+        order_id: order.id,
+        handler: async function (response) {
+          alert("✅ Payment Successful! Payment ID: " + response.razorpay_payment_id);
+
+          // confirm payment for booking on backend
+          const API_BASE2 = process.env.REACT_APP_API_URL || (process.env.NODE_ENV === 'development' ? 'http://localhost:5000' : '');
+          await fetch(`${API_BASE2}/api/payment-success`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ bookingId, paymentId: response.razorpay_payment_id }),
+          });
+
+          setShowTerms(false);
+          setSelectedBooking(null);
+        },
+        prefill: { name, email, contact: phone },
+        theme: { color: "#ff9c11" },
+      };
+
+      const rzp = new window.Razorpay(options);
+      rzp.open();
+    } catch (err) {
+      console.error('Payment flow failed:', err);
+      alert('Network or server error occurred. Please try again later.');
+    }
+  };
   return (
     <div className="home-wrapper">
       <div className="bubbles">
@@ -127,18 +160,96 @@ const openTestPayment = async () => {
             <span className="navbar-title-sub">Photo Studio</span>
           </div>
         </div>
-        <ul className="nav-links">
-          <li><a href="#book">Book Event</a></li>
-          <li><a href="#services">Services</a></li>
-          <li><a href="#aboutus">About Us</a></li>
-          <li><a href="#contact">Contact</a></li>
-          <div className="profile">
-            <img src={mLogo} alt="Profile" className="profile-img" />
-            <button className="logout-btn" onClick={handleLogout}>
-                Logout
-            </button>
-          </div>
+
+        {/* Hamburger for small screens */}
+        <button
+          className={`hamburger ${mobileMenuOpen ? 'open' : ''}`}
+          aria-label="Toggle menu"
+          aria-expanded={mobileMenuOpen}
+          onClick={() => setMobileMenuOpen((s) => !s)}
+        >
+          <span className="bar"></span>
+          <span className="bar"></span>
+          <span className="bar"></span>
+        </button>
+
+        <ul className={`nav-links ${mobileMenuOpen ? 'open' : ''}`}>
+          <li className="nav-item">
+            <span onClick={() => {
+              setShowBookDropdown(!showBookDropdown);
+              setShowServiceDropdown(false);
+              setMobileMenuOpen(false);
+            }}>
+              Book Event
+            </span>
+
+            {showBookDropdown && (
+              <ul className="dropdown">
+                {[
+                  "Marriage",
+                  "Engagement",
+                  "Pre-Wedding",
+                  "Baby Ceremony",
+                  "Special Event",
+                  "Others"
+                ].map((event) => {
+                  const EVENT_MAP = {
+                    'Marriage': { title: 'Wedding', img: weddingImg },
+                    'Engagement': { title: 'Engagement', img: engagementImg },
+                    'Pre-Wedding': { title: 'Pre-Wedding', img: preWeddingImg },
+                    'Baby Ceremony': { title: 'Baby', img: babyImg },
+                    'Special Event': { title: 'Special Event', img: specialEventImg },
+                    'Others': { title: 'Other', img: specialEventImg },
+                  };
+                  const ev = EVENT_MAP[event] || { title: event, img: specialEventImg };
+                  return (
+                    <li
+                      key={event}
+                      onClick={() => {
+                        openModal(ev);
+                        setShowBookDropdown(false);
+                      }}
+                    >
+                      {event}
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </li>
+          
+          <li className="nav-item">
+            <span onClick={() => {
+              setShowServiceDropdown(!showServiceDropdown);
+              setShowBookDropdown(false);
+            }}>
+              Services
+            </span>
+
+            {showServiceDropdown && (
+              <ul className="dropdown">
+                {["Photography", "Videography", "Other"].map((service) => (
+                  <li key={service}>{service}</li>
+                ))}
+              </ul>
+            )}
+          </li>
+          <li>
+            <a href="/booked-events">Booked Events</a>
+          </li>
+          <li>
+            <a href="#aboutus">About Us</a>
+          </li>
+          <li>
+            <a href="#contact">Contact</a>
+          </li>
         </ul>
+        <div className="profile">
+          <img src={mLogo} alt="Profile" className="profile-img" />
+          <button className="logout-btn" onClick={handleLogout}>
+            Logout
+          </button>
+        </div>
       </nav>
       <main className="home-main">
         <h2>Welcome to Madhuri Photo Studio</h2>
@@ -174,40 +285,40 @@ const openTestPayment = async () => {
               premium editing & full event coverage.
             </p>
             <div className="modal-info">
-              <p><strong>Duration:</strong> whole wedding</p>
-              <p><strong>Price:</strong> ₹7,000 – ₹20,000</p>
+              <p><strong>Duration:</strong> {selectedBooking.duration || 'Varies'}</p>
+              <p><strong>Price:</strong> {selectedBooking.price || 'Contact for quote'}</p>
             </div>
-                <form className="modal-form" onSubmit={handleBookingSubmit}>
-                  <input name="name" type="text" placeholder="Your Name" required />
-                  <input name="email" type="email" placeholder="Email Address" required />
-                  <input name="venue address" type="tel" placeholder="venue address" required />
-                  <input name="phone" type="tel" placeholder="Phone Number" required />
-                  <button className="modal-book-btn" type="submit">Book Event</button>
-                </form>
+            <form className="modal-form" onSubmit={handleBookingSubmit}>
+              <input name="name" type="text" placeholder="Your Name" required />
+              <input name="email" type="email" placeholder="Email Address" required />
+              <input name="location" type="text" placeholder="Venue address" required />
+              <input name="phone" type="tel" placeholder="Phone Number" required />
+              <button className="modal-book-btn" type="submit">Book Event</button>
+            </form>
             {showTerms && (
-  <div className="modal-overlay" onClick={() => setShowTerms(false)}>
-      <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-        <span className="modal-close" role="button" aria-label="Close terms modal" onClick={() => setShowTerms(false)}>&times;</span>
+              <div className="modal-overlay" onClick={() => setShowTerms(false)}>
+                <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+                  <span className="modal-close" role="button" aria-label="Close terms modal" onClick={() => setShowTerms(false)}>&times;</span>
 
-      <h2>📜 Terms & Conditions</h2>
+                  <h2>📜 Terms & Conditions</h2>
 
-      <ul className="terms-list">
-        <li>✅ Make sure your details are real and correct.</li>
-        <li>💰 You need to make <strong>50% advance payment</strong> before / while booking.</li>
-        <li>
-          📞 If you are not sure, you can contact the owner:
-          <br />
-          <strong>Phone:</strong> +91 9970072306  
-          <br />
-          <strong>Email:</strong> Madhuriphoto24@gmail.com
-        </li>
-      </ul>
-      <button className="modal-book-btn" onClick={openTestPayment}>
-         Proceed to Payment
-      </button>
-    </div>
-  </div>
-)}
+                  <ul className="terms-list">
+                    <li>✅ Make sure your details are real and correct.</li>
+                    <li>💰 You need to make <strong>50% advance payment</strong> before / while booking.</li>
+                    <li>
+                      📞 If you are not sure, you can contact the owner:
+                      <br />
+                      <strong>Phone:</strong> +91 9970072306
+                      <br />
+                      <strong>Email:</strong> Madhuriphoto24@gmail.com
+                    </li>
+                  </ul>
+                  <button className="modal-book-btn" onClick={openTestPayment}>
+                    Proceed to Payment
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -228,12 +339,12 @@ const openTestPayment = async () => {
 
         <div className="contact-details">
           <p><strong>📍 Address:</strong> MADHURI PHOTO STUDIO savalaj...
-                NEAR VAINGANGA BANK...
-                A/P - SAVLAJ
-                TAL-TASGAON
-                DIST-SANGLI
-                416311
-            </p>
+            NEAR VAINGANGA BANK...
+            A/P - SAVLAJ
+            TAL-TASGAON
+            DIST-SANGLI
+            416311
+          </p>
           <p><strong>📞 Phone:</strong> +91 9970072306</p>
           <p><strong>📧 Email:</strong> Madhuriphoto24@gmail.com</p>
         </div>

@@ -11,4 +11,8 @@ router.post('/check', adminContriller.checkCredentials);
 // Dashboard data
 router.get("/dashboard", adminContriller.getDashboardData);
 
+// Messages endpoints for admin
+router.get('/messages', adminContriller.getMessages);
+router.put('/messages/:id/read', adminContriller.markMessageRead);
+
 module.exports = router;
