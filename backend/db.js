@@ -7,11 +7,13 @@ const db = mysql.createConnection({
   user: process.env.MYSQLUSER,
   password: process.env.MYSQLPASSWORD,
   database: process.env.MYSQLDATABASE,
-  port: process.env.MYSQLPORT,
-  ssl: isProduction
+  port: process.env.MYSQLPORT || 3306,
+  ssl: process.env.NODE_ENV === "production"
     ? { rejectUnauthorized: false }
-    : undefined
+    : undefined,
+  connectTimeout: 10000
 });
+
 
 db.connect((err) => {
   if (err) {
