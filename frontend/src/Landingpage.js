@@ -20,7 +20,7 @@ import axios from "axios";
 const API_BASE =
   process.env.REACT_APP_API_URL ||
   'http://localhost:5000';
-const API_URL = `${API_BASE}/api/auth`;
+const API_URL = `${API_BASE.replace(/\/$/, "")}/api/auth`;
 const services = [
   { name: 'Weddings', desc: 'Best photography for your special day', img: service1Image },
   { name: 'Naming Ceremonies', desc: 'Capturing your baby\'s naming ceremony', img: service2Image },
