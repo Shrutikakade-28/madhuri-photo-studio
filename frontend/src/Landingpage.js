@@ -17,7 +17,9 @@ import portfolio7Img from './babies/b_4.jpeg';
 import portfolio8Img from './babies/b_2.jpeg';
 import axios from "axios";
 
-const API_BASE = process.env.REACT_APP_API_URL || (process.env.NODE_ENV === 'development' ? 'http://localhost:5000' : '');
+const API_BASE =
+  process.env.REACT_APP_API_URL ||
+  'http://localhost:5000';
 const API_URL = `${API_BASE}/api/auth`;
 const services = [
   { name: 'Weddings', desc: 'Best photography for your special day', img: service1Image },
