@@ -1,26 +1,28 @@
 const mysql = require("mysql2");
-
 const isProduction = process.env.NODE_ENV === "production";
-
-const db = mysql.createConnection({
-  host: process.env.MYSQLHOST,
-  user: process.env.MYSQLUSER,
-  password: process.env.MYSQLPASSWORD,
-  database: process.env.MYSQLDATABASE,
-  port: process.env.MYSQLPORT || 3306,
-  ssl: process.env.NODE_ENV === "production"
-    ? { rejectUnauthorized: false }
-    : undefined,
+const pool = mysql.createPool({
+  host: process.env.DB_HOST,
+  user: process.env.DB_USER,
+  password: process.env.DB_PASS,
+  database: process.env.DB_NAME,
+  port: process.env.DB_PORT || 3306,
+  waitForConnections: true,
+  connectionLimit: 10,
+  queueLimit: 0,
   connectTimeout: 10000
 });
 
+// Add promise wrapper for async/await support
+const poolPromise = pool.promise();
 
-db.connect((err) => {
+// Test connection once
+pool.getConnection((err, connection) => {
   if (err) {
-    console.error("❌ MySQL connection failed:", err.message);
-    return;
+    console.error("❌ MySQL pool connection failed:", err.message);
+  } else {
+    console.log("✅ MySQL Pool Connected");
+    connection.release();
   }
-  console.log("✅ MySQL Connected");
 });
 
-module.exports = db;
+module.exports = pool;

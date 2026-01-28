@@ -24,14 +24,24 @@ export default function AdminDashboard() {
   const pending = bookings.filter((b) => b.status === "pending");
   const completed = bookings.filter((b) => b.status === "completed");
   const unreadMessages = messages.filter(m => !m.is_read);
+  const fetchMessages = async () => {
+    try {
+      const res = await axios.get(`${API_BASE}/api/admin/messages`);
+      setMessages(res.data.messages || []);
+    } catch (err) {
+      console.error("Failed to fetch messages", err);
+    }
+  };
 
+  useEffect(() => {
+    fetchMessages();
+  }, []);
   const markRead = async (id) => {
-    const API_BASE = process.env.REACT_APP_API_URL || (process.env.NODE_ENV === 'development' ? 'http://localhost:5000' : '');
     try {
       await axios.put(`${API_BASE}/api/admin/messages/${id}/read`);
-      setMessages((prev) => prev.map((m) => (m.id === id ? { ...m, is_read: true } : m)));
+      fetchMessages(); // 🔥 refresh from DB
     } catch (err) {
-      console.error('Failed to mark message read', err);
+      console.error("Failed to mark message read", err);
     }
   };
 
@@ -82,41 +92,41 @@ export default function AdminDashboard() {
           <h2>📋 Booking History</h2>
           <div className="table-responsive">
             <table>
-            <thead>
-              <tr>
-                <th>Client</th>
-                <th>Event</th>
-                <th>Location</th>
-                <th>Date</th>
-                <th>Time</th>
-                <th>Status</th>
-                <th>Payment</th>
-              </tr>
-            </thead>
-
-            <tbody>
-              {bookings.map((b, i) => (
-                <tr key={i}>
-                  <td>{b.full_name}</td>
-                  <td>{b.event_type}</td>
-                  <td>{b.location || "—"}</td>
-                  <td>{b.booking_date}</td>
-                  <td>{b.booking_time || "—"}</td>
-                  <td>
-                    <span className={`status ${b.status || "pending"}`}>
-                      {b.status || "pending"}
-                    </span>
-                  </td>
-                  <td>
-                    <span
-                      className={`payment ${b.payment_status || "pending"}`}
-                    >
-                      {b.payment_status || "pending"}
-                    </span>
-                  </td>
+              <thead>
+                <tr>
+                  <th>Client</th>
+                  <th>Event</th>
+                  <th>Location</th>
+                  <th>Date</th>
+                  <th>Time</th>
+                  <th>Status</th>
+                  <th>Payment</th>
                 </tr>
-              ))}
-            </tbody>
+              </thead>
+
+              <tbody>
+                {bookings.map((b, i) => (
+                  <tr key={i}>
+                    <td>{b.full_name}</td>
+                    <td>{b.event_type}</td>
+                    <td>{b.location || "—"}</td>
+                    <td>{b.booking_date}</td>
+                    <td>{b.booking_time || "—"}</td>
+                    <td>
+                      <span className={`status ${b.status || "pending"}`}>
+                        {b.status || "pending"}
+                      </span>
+                    </td>
+                    <td>
+                      <span
+                        className={`payment ${b.payment_status || "pending"}`}
+                      >
+                        {b.payment_status || "pending"}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
             </table>
           </div>
 

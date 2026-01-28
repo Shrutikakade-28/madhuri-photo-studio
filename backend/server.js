@@ -219,9 +219,22 @@ app.get("/api/bookings", (req, res) => {
 
 // CONTACT API (temporary)
 app.post('/api/contact', (req, res) => {
-  console.log('Contact form submission:', req.body);
-  res.json({ success: true, message: 'Message received' });
+  const { name, email, message } = req.body;
+
+  if (!name || !email || !message) {
+    return res.status(400).json({ success: false, error: 'All fields are required' });
+  }
+
+  const sql = `INSERT INTO messages (name, email, message) VALUES (?, ?, ?)`;
+  db.query(sql, [name, email, message], (err) => {
+    if (err) {
+      console.error('Failed to save message:', err.message);
+      return res.status(500).json({ success: false, error: 'Failed to save message' });
+    }
+    res.json({ success: true, message: 'Message sent!' });
+  });
 });
+
 
 // RAZORPAY KEYS INFO (debug)
 app.get('/api/razorpay-keys', (req, res) => {
@@ -247,6 +260,30 @@ app.get('/api/health', (req, res) => {
     res.json({ success: true, db: true });
   });
 });
+// GET all messages
+app.get('/api/admin/messages', (req, res) => {
+  const sql = `SELECT * FROM messages ORDER BY created_at DESC`;
+  db.query(sql, (err, result) => {
+    if (err) {
+      console.error('Failed to fetch messages:', err.message);
+      return res.status(500).json({ success: false, error: 'Failed to fetch messages' });
+    }
+    res.json({ success: true, messages: result });
+  });
+});
+
+// MARK MESSAGE AS READ
+app.put('/api/admin/messages/:id/read', (req, res) => {
+  const messageId = req.params.id;
+  const sql = `UPDATE messages SET is_read=1 WHERE id=?`;
+  db.query(sql, [messageId], (err, result) => {
+    if (err) {
+      console.error('Failed to mark message read:', err.message);
+      return res.status(500).json({ success: false, error: 'Failed to update message' });
+    }
+    res.json({ success: true, message: 'Message marked as read' });
+  });
+});
 
 // Graceful error handlers for unhandled rejections & exceptions
 process.on('unhandledRejection', (reason, promise) => {
@@ -261,4 +298,37 @@ process.on('uncaughtException', (err) => {
 // START SERVER
 app.listen(port, () => {
   console.log(`Server listening on port ${port}`);
+});
+app.put('/api/user/profile', (req, res) => {
+  const { userId, name, profile_image } = req.body;
+
+  if (!userId || !name) {
+    return res.status(400).json({ success: false, error: 'Missing fields' });
+  }
+
+  const sql = `
+    UPDATE users 
+    SET name = ?, profile_image = ?
+    WHERE id = ?
+  `;
+
+  db.query(sql, [name, profile_image || null, userId], (err) => {
+    if (err) {
+      console.error('Profile update failed:', err.message);
+      return res.status(500).json({ success: false, error: 'DB error' });
+    }
+    res.json({ success: true, message: 'Profile updated' });
+  });
+});
+
+app.get('/api/user/profile/:id', (req, res) => {
+  const userId = req.params.id;
+
+  const sql = `SELECT id, name, email, profile_image FROM users WHERE id=?`;
+  db.query(sql, [userId], (err, result) => {
+    if (err || result.length === 0) {
+      return res.status(404).json({ success: false });
+    }
+    res.json({ success: true, user: result[0] });
+  });
 });

@@ -28,7 +28,7 @@ exports.loginAdmin = (req, res) => {
     }
     const token = jwt.sign(
       { id: admin.id, username: admin.username }, 
-      "YOUR_SECRET_KEY", // Make sure this is a string
+      process.env.JWT_SECRET || "YOUR_SECRET_KEY",
       { expiresIn: '1h' }
     );
     console.log("Success: Login successful"); 
@@ -84,15 +84,24 @@ exports.getMessages = (req, res) => {
       is_read: !!m.is_read,
       created_at: m.created_at
     }));
+    console.log("MESSAGES FROM DB:", messages);
     return res.json({ success: true, messages });
   });
 };
-
-// Mark message as read
 exports.markMessageRead = (req, res) => {
-  const id = req.params.id;
-  db.query('UPDATE messages SET is_read = 1 WHERE id = ?', [id], (err, result) => {
-    if (err) return res.status(500).json({ success: false, message: 'DB Error', error: err.message });
-    return res.json({ success: true, message: 'Marked as read' });
-  });
+  const { id } = req.params;
+
+  db.query(
+    "UPDATE messages SET is_read = 1 WHERE id = ?",
+    [id],
+    (err) => {
+      if (err) {
+        console.error("Mark read error:", err);
+        return res.status(500).json({ success: false });
+      }
+
+      res.json({ success: true });
+    }
+  );
 };
+

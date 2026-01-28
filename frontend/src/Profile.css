@@ -1,0 +1,99 @@
+.profile-page {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.3); /* dark overlay */
+  backdrop-filter: blur(2px);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+.close-btn {
+  position: absolute;
+  top: 15px;
+  right: 15px;
+  background: transparent;
+  border: none;
+  font-size: 22px;
+  cursor: pointer;
+  color: #555;
+  transition: color 0.2s ease;
+}
+
+.close-btn:hover {
+  color: #929191;
+}
+
+.profile-card {
+  background: #fff;
+  border-radius: 10px;
+  padding: 24px;
+  box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+  margin-bottom: 30px;
+  text-align: center;
+}
+
+.profile-image-section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+
+.profile-img-large {
+  width: 120px;
+  height: 120px;
+  object-fit: cover;
+  border-radius: 50%;
+  border: 2px solid #ff9c11;
+}
+
+.profile-username-section {
+  margin-top: 15px;
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  align-items: center;
+}
+
+.profile-username-section input {
+  padding: 6px 10px;
+  border-radius: 6px;
+  border: 1px solid #ccc;
+  width: 200px;
+}
+
+.profile-username-section button {
+  padding: 6px 12px;
+  background: #ff9c11;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.logout-btn {
+  background: #f44336;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.profile-bookings table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 15px;
+}
+
+.profile-bookings th, .profile-bookings td {
+  padding: 10px;
+  border: 1px solid #ddd;
+  text-align: center;
+}
+
+.profile-bookings th {
+  background: #ff9c11;
+  color: #fff;
+}

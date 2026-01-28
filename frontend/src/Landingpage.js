@@ -126,19 +126,35 @@ const Portfolio = () => (
     </div>
   </section>
 );
-
 const Contact = () => {
-  const [formData, setFormData] = useState({ name: '', email: '',pnone: '', message: '' });
+  const [formData, setFormData] = useState({
+    name: '',
+    email: '',
+    phone: '',
+    message: ''
+  });
   const [status, setStatus] = useState('');
-  const handleChange = (e) => setFormData({ ...formData, [e.target.name]: e.target.value });
-  const handleSubmit = (e) => {
+
+  const handleChange = (e) =>
+    setFormData({ ...formData, [e.target.name]: e.target.value });
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setStatus('Sending...');
-    console.log('Contact Form Submitted:', formData);
-    setTimeout(() => {
+
+    try {
+      const API_BASE =
+        process.env.REACT_APP_API_URL ||
+        'http://localhost:5000';
+
+      await axios.post(`${API_BASE}/api/contact`, formData);
+
       setStatus('Message sent successfully! We will contact you soon.');
       setFormData({ name: '', email: '', phone: '', message: '' });
-    }, 1500);
+    } catch (err) {
+      console.error(err);
+      setStatus('Failed to send message. Please try again.');
+    }
   };
 
   return (
@@ -150,12 +166,11 @@ const Contact = () => {
         <input name="phone" placeholder="Your phone" value={formData.phone} onChange={handleChange} required />
         <textarea name="message" placeholder="Your message" value={formData.message} onChange={handleChange} required />
         <button className="btn" type="submit">Send Message</button>
-        {status && <p className={`form-status ${status.includes('successfully') ? 'success' : 'error'}`}>{status}</p>}
+        {status && <p className="form-status">{status}</p>}
       </form>
     </section>
   );
 };
-
 const Footer = () => (
   <footer className="footer">
     <p>© {new Date().getFullYear()} Madhuri Photo Studio</p>

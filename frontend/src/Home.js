@@ -9,7 +9,7 @@ import babyImg from './babies/b_9.jpeg';
 import birthdayImg from './babies/b_11.jpeg';
 import specialEventImg from './wedding/w_1.jpeg';
 import babyImg2 from './babies/b_1.jpeg';
-
+import { FaFacebookF, FaInstagram, FaYoutube } from "react-icons/fa";
 const bookings = [
   { title: 'Wedding', img: weddingImg },
   { title: 'Pre-Wedding', img: preWeddingImg },
@@ -62,13 +62,38 @@ export default function Home() {
     e.preventDefault();
     setShowTerms(true);
   };
-
-  const handleContactSubmit = (e) => {
+  const handleContactSubmit = async (e) => {
     e.preventDefault();
-    alert('Thanks — your message was sent. We will contact you soon.');
-    e.target.reset();
-  };
 
+    const form = e.target;
+    const name = form.name.value;
+    const email = form.email.value;
+    const message = form.message.value;
+
+    const API_BASE =
+      process.env.REACT_APP_API_URL ||
+      (process.env.NODE_ENV === "development" ? "http://localhost:5000" : "");
+
+    try {
+      const res = await fetch(`${API_BASE}/api/messages`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name, email, message }),
+      });
+
+      const data = await res.json();
+
+      if (data.success) {
+        alert("✅ Message sent successfully!");
+        form.reset();
+      } else {
+        alert("❌ Failed to send message. Try again.");
+      }
+    } catch (err) {
+      console.error("Contact message error:", err);
+      alert("❌ Network error. Please try again later.");
+    }
+  };
   const openTestPayment = async () => {
     if (!selectedBooking) {
       alert('Please select an event to book.');
@@ -217,7 +242,7 @@ export default function Home() {
               </ul>
             )}
           </li>
-          
+
           <li className="nav-item">
             <span onClick={() => {
               setShowServiceDropdown(!showServiceDropdown);
@@ -245,11 +270,15 @@ export default function Home() {
           </li>
         </ul>
         <div className="profile">
-          <img src={mLogo} alt="Profile" className="profile-img" />
-          <button className="logout-btn" onClick={handleLogout}>
-            Logout
-          </button>
+          <a href="/profile">
+            <img
+              src={user?.profile_image || mLogo} // dynamically show uploaded image
+              alt={user?.name || "Profile"}
+              className="profile-img"
+            />
+          </a>
         </div>
+
       </nav>
       <main className="home-main">
         <h2>Welcome to Madhuri Photo Studio</h2>
@@ -355,6 +384,56 @@ export default function Home() {
           <textarea name="message" placeholder="Your Message" required />
           <button type="submit" className="contact-btn">Send Message</button>
         </form>
+
+        <footer className="main-footer">
+          <div className="footer-content">
+            {/* Footer Info */}
+            <div className="footer-info">
+              <div className="footer-left">
+                <img src={mLogo} alt="Logo" className="navbar-logo-img" />
+                <div className="footer-title-group">
+                  <span className="navbar-title-main">MADHURI</span>
+                  <span className="footer-title-sub">Photo Studio</span>
+                </div>
+              </div>
+              <p className="footer-description">
+                Capturing your precious moments with creativity and passion. We specialize in weddings, pre-weddings, baby shoots, and special events.
+              </p>
+            </div>
+
+            {/* Footer Links */}
+            <div className="footer-links">
+              <div className="footer-column">
+                <h4>Services</h4>
+                <ul>
+                  <li><a href="#services-section">Photography</a></li>
+                  <li><a href="#services-section">Videography</a></li>
+                  <li><a href="#aboutus">Full Event Coverage</a></li>
+                </ul>
+              </div>
+              <div className="footer-column">
+                <h4>Support</h4>
+                <ul>
+                  <li><a href="#contact">Contact Us</a></li>
+                  <li><a href="#aboutus">About Us</a></li>
+                </ul>
+              </div>
+              <div className="footer-column">
+                <h4>Follow Us</h4>
+                <ul className="social-links">
+                  <li><a href="https://www.facebook.com" target="_blank" rel="noopener noreferrer">Facebook</a></li>
+                  <li><a href="https://www.instagram.com/madhuri_photo_savlaj?utm_source=ig_web_button_share_sheet&igsh=ZDNlZDc0MzIxNw==" target="_blank" rel="noopener noreferrer">Instagram</a></li>
+                  <li><a href="http://www.youtube.com/@madhuriphotosavlaj5638" target="_blank" rel="noopener noreferrer">YouTube</a></li>
+                </ul>
+              </div>
+            </div>
+          </div>
+
+          {/* Footer Bottom */}
+          <div className="footer-bottom">
+            <p>&copy; 2026 Madhuri Photo Studio. All rights reserved.</p>
+          </div>
+        </footer>
       </section>
     </div>
   );
