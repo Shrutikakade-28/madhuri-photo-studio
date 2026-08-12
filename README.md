@@ -1,6 +1,5 @@
 # Madhuri Photo Studio - MERN Starter
 
-This archive contains a starter MERN project for the landing page design you provided.
 
 ## Structure
 - backend/  -> Express server (api endpoint: POST /api/contact)
