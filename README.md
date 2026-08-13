@@ -21,7 +21,7 @@ cd frontend
 npm install
 npm start
 ```
-Frontend runs at http://localhost:3000 and calls the backend at http://localhost:5000 for the contact form.
+Frontend runs at  http://10.81.219.21:3000 and calls the backend at http://localhost:5000 for the contact form.
 
 ## Notes
 - The frontend includes a hero image copied from the workspace (Landingpage.png) at `public/images/hero.jpg`.
